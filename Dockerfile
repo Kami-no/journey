@@ -8,7 +8,7 @@ RUN go mod download
 
 COPY . .
 RUN go test ./... \
-    && go build -a -tags 'noplugins nossl netgo' -ldflags '-s -w' -o journey
+    && go build -a -tags 'noplugins nossl netgo' -ldflags '-s -w' -o 'journey'
 
 # artefact stage
 # hadolint ignore=DL3007
