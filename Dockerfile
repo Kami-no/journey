@@ -1,5 +1,5 @@
 # build stage
-FROM golang:1.22-bookworm AS build
+FROM golang:1.23-bookworm AS build
 
 WORKDIR /opt/build
 
