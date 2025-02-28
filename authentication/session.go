@@ -1,6 +1,7 @@
 package authentication
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/gorilla/securecookie"
@@ -21,6 +22,8 @@ func SetSession(userName string, response http.ResponseWriter) {
 			Path:  "/admin/",
 		}
 		http.SetCookie(response, cookie)
+	} else {
+		log.Printf("Failed SetSession: %v\n", err)
 	}
 }
 
