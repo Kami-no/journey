@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/dimfeld/httptreemux/v5"
+	"golang.org/x/net/http2"
 
 	"github.com/kabukky/journey/configuration"
 	"github.com/kabukky/journey/database"
@@ -156,7 +157,8 @@ func main() {
 			IdleTimeout:  120 * time.Second,
 			Handler:      httpRouter,
 		}
-		srv.Protocols.SetUnencryptedHTTP2(true)
+		// Enable HTTP/2 over cleartext (Go 1.22+)
+		http2.ConfigureServer(srv, nil)
 		// Start http server
 		go func() {
 			log.Println("Starting server without HTTPS support. Please enable HTTPS in " + filenames.ConfigFilename + " to improve security.")
