@@ -158,7 +158,11 @@ func main() {
 			Handler:      httpRouter,
 		}
 		// Enable HTTP/2 over cleartext (Go 1.22+)
-		http2.ConfigureServer(srv, nil)
+		// FIXME: http2.ConfigureServer is deprecated but still required in Go 1.27 for H2C cleartext support; the Protocols API doesn't work
+		// nolint:staticcheck // SA1019 deprecated but functional for HTTP/2 cleartext
+		if err := http2.ConfigureServer(srv, nil); err != nil {
+			log.Fatal("Error: Couldn't configure HTTP/2:", err)
+		}
 		// Start http server
 		go func() {
 			log.Println("Starting server without HTTPS support. Please enable HTTPS in " + filenames.ConfigFilename + " to improve security.")
