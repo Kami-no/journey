@@ -80,7 +80,7 @@ type JsonImage struct {
 // Function to serve the login page
 func getLoginHandler(w http.ResponseWriter, r *http.Request, _ map[string]string) {
 	if database.RetrieveUsersCount() == 0 {
-		http.Redirect(w, r, "/admin/register/", 302)
+		http.Redirect(w, r, "/admin/register/", http.StatusFound)
 		return
 	}
 	http.ServeFile(w, r, filepath.Join(filenames.AdminFilepath, "login.html"))
@@ -97,7 +97,7 @@ func postLoginHandler(w http.ResponseWriter, r *http.Request, _ map[string]strin
 			log.Println("Failed login attempt for user " + name)
 		}
 	}
-	http.Redirect(w, r, "/admin/", 302)
+	http.Redirect(w, r, "/admin/", http.StatusFound)
 }
 
 // Function to serve the registration form
@@ -106,7 +106,7 @@ func getRegistrationHandler(w http.ResponseWriter, r *http.Request, _ map[string
 		http.ServeFile(w, r, filepath.Join(filenames.AdminFilepath, "registration.html"))
 		return
 	}
-	http.Redirect(w, r, "/admin/", 302)
+	http.Redirect(w, r, "/admin/", http.StatusFound)
 }
 
 // Function to receive a registration form.
@@ -129,10 +129,10 @@ func postRegistrationHandler(w http.ResponseWriter, r *http.Request, _ map[strin
 				log.Println("503:", r.URL)
 				return
 			}
-			http.Redirect(w, r, "/admin/", 302)
+			http.Redirect(w, r, "/admin/", http.StatusFound)
 			return
 		}
-		http.Redirect(w, r, "/admin/", 302)
+		http.Redirect(w, r, "/admin/", http.StatusFound)
 		return
 	}
 
@@ -144,13 +144,13 @@ func postRegistrationHandler(w http.ResponseWriter, r *http.Request, _ map[strin
 // Function to log out the user. Not used at the moment.
 func logoutHandler(w http.ResponseWriter, r *http.Request, _ map[string]string) {
 	authentication.ClearSession(w)
-	http.Redirect(w, r, "/admin/login/", 302)
+	http.Redirect(w, r, "/admin/login/", http.StatusFound)
 }
 
 // Function to route the /admin/ url accordingly. (Is user logged in? Is at least one user registered?)
 func adminHandler(w http.ResponseWriter, r *http.Request, _ map[string]string) {
 	if database.RetrieveUsersCount() == 0 {
-		http.Redirect(w, r, "/admin/register/", 302)
+		http.Redirect(w, r, "/admin/register/", http.StatusFound)
 		return
 	}
 	userName := authentication.GetUserName(r)
@@ -158,7 +158,7 @@ func adminHandler(w http.ResponseWriter, r *http.Request, _ map[string]string) {
 		http.ServeFile(w, r, filepath.Join(filenames.AdminFilepath, "admin.html"))
 		return
 	}
-	http.Redirect(w, r, "/admin/login/", 302)
+	http.Redirect(w, r, "/admin/login/", http.StatusFound)
 }
 
 // Function to serve files belonging to the admin interface.

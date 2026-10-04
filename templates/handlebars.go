@@ -108,16 +108,17 @@ func paginationFunc(helper *structure.Helper, values *structure.RequestData) []b
 }
 
 func paginationDotTotalFunc(helper *structure.Helper, values *structure.RequestData) []byte {
-	if values.CurrentTemplate == 0 { // index
+	switch values.CurrentTemplate {
+	case 0: // index
 		return []byte(strconv.FormatInt(values.Blog.PostCount, 10))
-	} else if values.CurrentTemplate == 3 { // author
+	case 3: // author
 		count, err := database.RetrieveNumberOfPostsByUser(values.Posts[values.CurrentPostIndex].Author.Id)
 		if err != nil {
 			log.Println("Couldn't get number of posts", err.Error())
 			return []byte{}
 		}
 		return []byte(strconv.FormatInt(count, 10))
-	} else if values.CurrentTemplate == 2 { // tag
+	case 2: // tag
 		count, err := database.RetrieveNumberOfPostsByTag(values.CurrentTag.Id)
 		if err != nil {
 			log.Println("Couldn't get number of posts", err.Error())
@@ -140,15 +141,15 @@ func pluralFunc(helper *structure.Helper, values *structure.RequestData) []byte 
 		for key, value := range arguments {
 			if countString == "0" && key == "empty" {
 				output := value
-				output = strings.Replace(output, "%", countString, -1)
+				output = strings.ReplaceAll(output, "%", countString)
 				return []byte(output)
 			} else if countString == "1" && key == "singular" {
 				output := value
-				output = strings.Replace(output, "%", countString, -1)
+				output = strings.ReplaceAll(output, "%", countString)
 				return []byte(output)
 			} else if countString != "0" && countString != "1" && key == "plural" {
 				output := value
-				output = strings.Replace(output, "%", countString, -1)
+				output = strings.ReplaceAll(output, "%", countString)
 				return []byte(output)
 			}
 		}
@@ -166,15 +167,16 @@ func prevFunc(helper *structure.Helper, values *structure.RequestData) []byte {
 func nextFunc(helper *structure.Helper, values *structure.RequestData) []byte {
 	var count int64
 	var err error
-	if values.CurrentTemplate == 0 { // index
+	switch values.CurrentTemplate {
+	case 0: // index
 		count = values.Blog.PostCount
-	} else if values.CurrentTemplate == 2 { // tag
+	case 2: // tag
 		count, err = database.RetrieveNumberOfPostsByTag(values.CurrentTag.Id)
 		if err != nil {
 			log.Println("Couldn't get number of posts for tag", err.Error())
 			return []byte{}
 		}
-	} else if values.CurrentTemplate == 3 { // author
+	case 3: // author
 		count, err = database.RetrieveNumberOfPostsByUser(values.Posts[values.CurrentPostIndex].Author.Id)
 		if err != nil {
 			log.Println("Couldn't get number of posts for author", err.Error())
@@ -195,15 +197,16 @@ func pageFunc(helper *structure.Helper, values *structure.RequestData) []byte {
 func pagesFunc(helper *structure.Helper, values *structure.RequestData) []byte {
 	var count int64
 	var err error
-	if values.CurrentTemplate == 0 { // index
+	switch values.CurrentTemplate {
+	case 0: // index
 		count = values.Blog.PostCount
-	} else if values.CurrentTemplate == 2 { // tag
+	case 2: // tag
 		count, err = database.RetrieveNumberOfPostsByTag(values.CurrentTag.Id)
 		if err != nil {
 			log.Println("Couldn't get number of posts for tag", err.Error())
 			return []byte{}
 		}
-	} else if values.CurrentTemplate == 3 { // author
+	case 3: // author
 		count, err = database.RetrieveNumberOfPostsByUser(values.Posts[values.CurrentPostIndex].Author.Id)
 		if err != nil {
 			log.Println("Couldn't get number of posts for author", err.Error())
@@ -220,26 +223,29 @@ func pagesFunc(helper *structure.Helper, values *structure.RequestData) []byte {
 
 func page_urlFunc(helper *structure.Helper, values *structure.RequestData) []byte {
 	if len(helper.Arguments) != 0 {
-		if helper.Arguments[0].Name == "prev" || helper.Arguments[0].Name == "pagination.prev" {
+		switch helper.Arguments[0].Name {
+		case "prev", "pagination.prev":
 			if values.CurrentIndexPage > 1 {
 				var buffer bytes.Buffer
 				if values.CurrentIndexPage == 2 {
-					if values.CurrentTemplate == 3 { // author
+					switch values.CurrentTemplate {
+					case 3: // author
 						buffer.WriteString("/author/")
 						// TODO: Error handling if there is no Posts[values.CurrentPostIndex]
 						buffer.WriteString(values.Posts[values.CurrentPostIndex].Author.Slug)
-					} else if values.CurrentTemplate == 2 { // tag
+					case 2: // tag
 						buffer.WriteString("/tag/")
 						// TODO: Error handling if there is no Posts[values.CurrentPostIndex]
 						buffer.WriteString(values.CurrentTag.Slug)
 					}
 					buffer.WriteString("/")
 				} else {
-					if values.CurrentTemplate == 3 { // author
+					switch values.CurrentTemplate {
+					case 3: // author
 						buffer.WriteString("/author/")
 						// TODO: Error handling if there is no Posts[values.CurrentPostIndex]
 						buffer.WriteString(values.Posts[values.CurrentPostIndex].Author.Slug)
-					} else if values.CurrentTemplate == 2 { // tag
+					case 2: // tag
 						buffer.WriteString("/tag/")
 						// TODO: Error handling if there is no Posts[values.CurrentPostIndex]
 						buffer.WriteString(values.CurrentTag.Slug)
@@ -253,18 +259,19 @@ func page_urlFunc(helper *structure.Helper, values *structure.RequestData) []byt
 				}
 				return buffer.Bytes()
 			}
-		} else if helper.Arguments[0].Name == "next" || helper.Arguments[0].Name == "pagination.next" {
+		case "next", "pagination.next":
 			var count int64
 			var err error
-			if values.CurrentTemplate == 0 { // index
+			switch values.CurrentTemplate {
+			case 0: // index
 				count = values.Blog.PostCount
-			} else if values.CurrentTemplate == 2 { // tag
+			case 2: // tag
 				count, err = database.RetrieveNumberOfPostsByTag(values.CurrentTag.Id)
 				if err != nil {
 					log.Println("Couldn't get number of posts for tag", err.Error())
 					return []byte{}
 				}
-			} else if values.CurrentTemplate == 3 { // author
+			case 3: // author
 				count, err = database.RetrieveNumberOfPostsByUser(values.Posts[values.CurrentPostIndex].Author.Id)
 				if err != nil {
 					log.Println("Couldn't get number of posts for author", err.Error())
@@ -274,11 +281,12 @@ func page_urlFunc(helper *structure.Helper, values *structure.RequestData) []byt
 			maxPages := positiveCeilingInt64(float64(count) / float64(values.Blog.PostsPerPage))
 			if int64(values.CurrentIndexPage) < maxPages {
 				var buffer bytes.Buffer
-				if values.CurrentTemplate == 3 { // author
+				switch values.CurrentTemplate {
+				case 3: // author
 					buffer.WriteString("/author/")
 					// TODO: Error handling if there is no Posts[values.CurrentPostIndex]
 					buffer.WriteString(values.Posts[values.CurrentPostIndex].Author.Slug)
-				} else if values.CurrentTemplate == 2 { // tag
+				case 2: // tag
 					buffer.WriteString("/tag/")
 					// TODO: Error handling if there is no Posts[values.CurrentPostIndex]
 					buffer.WriteString(values.CurrentTag.Slug)
@@ -311,7 +319,8 @@ func featuredFunc(helper *structure.Helper, values *structure.RequestData) []byt
 }
 
 func body_classFunc(helper *structure.Helper, values *structure.RequestData) []byte {
-	if values.CurrentTemplate == 1 { // post
+	switch values.CurrentTemplate {
+	case 1: // post
 		// TODO: is there anything else that needs to be output here?
 		var buffer bytes.Buffer
 		buffer.WriteString("post-template")
@@ -324,12 +333,12 @@ func body_classFunc(helper *structure.Helper, values *structure.RequestData) []b
 			buffer.WriteString(tag.Slug)
 		}
 		return buffer.Bytes()
-	} else if values.CurrentTemplate == 0 { // index
+	case 0: // index
 		if values.CurrentIndexPage == 1 {
 			return []byte("home-template")
 		}
 		return []byte("paged archive-template")
-	} else if values.CurrentTemplate == 3 { // author
+	case 3: // author
 		var buffer bytes.Buffer
 		buffer.WriteString("author-template author-")
 		// TODO: Error handling if there is no Posts[values.CurrentPostIndex]
@@ -338,7 +347,7 @@ func body_classFunc(helper *structure.Helper, values *structure.RequestData) []b
 			buffer.WriteString(" paged archive-template")
 		}
 		return buffer.Bytes()
-	} else if values.CurrentTemplate == 2 { // tag
+	case 2: // tag
 		var buffer bytes.Buffer
 		buffer.WriteString("tag-template tag-")
 		buffer.WriteString(values.CurrentTag.Slug)
@@ -372,16 +381,17 @@ func ghost_footFunc(helper *structure.Helper, values *structure.RequestData) []b
 }
 
 func meta_titleFunc(helper *structure.Helper, values *structure.RequestData) []byte {
-	if values.CurrentTemplate == 1 { // post or page
+	switch values.CurrentTemplate {
+	case 1: // post or page
 		return evaluateEscape(values.Posts[values.CurrentPostIndex].Title, helper.Unescaped)
-	} else if values.CurrentTemplate == 3 { // author
+	case 3: // author
 		var buffer bytes.Buffer
 		// TODO: Error handling if there is no Posts[values.CurrentPostIndex]
 		buffer.Write(values.Posts[values.CurrentPostIndex].Author.Name)
 		buffer.WriteString(" - ")
 		buffer.Write(values.Blog.Title)
 		return evaluateEscape(buffer.Bytes(), helper.Unescaped)
-	} else if values.CurrentTemplate == 2 { // tag
+	case 2: // tag
 		var buffer bytes.Buffer
 		// TODO: Error handling if there is no Posts[values.CurrentPostIndex]
 		buffer.Write(values.CurrentTag.Name)
@@ -466,10 +476,11 @@ func websiteFunc(helper *structure.Helper, values *structure.RequestData) []byte
 }
 
 func imageFunc(helper *structure.Helper, values *structure.RequestData) []byte {
-	if values.CurrentHelperContext == 1 { // post
+	switch values.CurrentHelperContext {
+	case 1: // post
 		// TODO: Error handling if there is no Posts[values.CurrentPostIndex]
 		return evaluateEscape(values.Posts[values.CurrentPostIndex].Image, helper.Unescaped)
-	} else if values.CurrentHelperContext == 3 { // author
+	case 3: // author
 		// TODO: Error handling if there is no Posts[values.CurrentPostIndex]
 		return evaluateEscape(values.Posts[values.CurrentPostIndex].Author.Image, helper.Unescaped)
 	}
@@ -510,14 +521,19 @@ func tagsFunc(helper *structure.Helper, values *structure.RequestData) []byte {
 		makeLink := true
 		if len(helper.Arguments) != 0 {
 			arguments := methods.ProcessHelperArguments(helper.Arguments)
-			for key, value := range arguments {
-				if key == "separator" {
+			for _, key := range []string{"separator", "suffix", "prefix", "autolink"} {
+				value, exists := arguments[key]
+				if !exists {
+					continue
+				}
+				switch key {
+				case "separator":
 					separator = value
-				} else if key == "suffix" {
+				case "suffix":
 					suffix = value
-				} else if key == "prefix" {
+				case "prefix":
 					prefix = value
-				} else if key == "autolink" {
+				case "autolink":
 					if value == "false" {
 						makeLink = false
 					}
@@ -586,18 +602,19 @@ func urlFunc(helper *structure.Helper, values *structure.RequestData) []byte {
 			}
 		}
 	}
-	if values.CurrentHelperContext == 1 { // post
+	switch values.CurrentHelperContext {
+	case 1: // post
 		buffer.WriteString("/")
 		buffer.WriteString(values.Posts[values.CurrentPostIndex].Slug)
 		buffer.WriteString("/")
 		return evaluateEscape(buffer.Bytes(), helper.Unescaped)
-	} else if values.CurrentHelperContext == 3 { // author
+	case 3: // author
 		buffer.WriteString("/author/")
 		// TODO: Error handling if there is no Posts[values.CurrentPostIndex]
 		buffer.WriteString(values.Posts[values.CurrentPostIndex].Author.Slug)
 		buffer.WriteString("/")
 		return evaluateEscape(buffer.Bytes(), helper.Unescaped)
-	} else if values.CurrentHelperContext == 4 { // navigation
+	case 4: // navigation
 		buffer.WriteString(values.Blog.NavigationItems[values.CurrentNavigationIndex].Url)
 		return evaluateEscape(buffer.Bytes(), helper.Unescaped)
 	}
@@ -614,11 +631,17 @@ func contentFunc(helper *structure.Helper, values *structure.RequestData) []byte
 }
 
 func excerptFunc(helper *structure.Helper, values *structure.RequestData) []byte {
-	if values.CurrentHelperContext == 1 { // post
+	switch values.CurrentHelperContext {
+	case 1: // post
 		if len(helper.Arguments) != 0 {
 			arguments := methods.ProcessHelperArguments(helper.Arguments)
-			for key, value := range arguments {
-				if key == "words" {
+			for _, key := range []string{"words", "characters"} {
+				value, exists := arguments[key]
+				if !exists {
+					continue
+				}
+				switch key {
+				case "words":
 					number, err := strconv.Atoi(value)
 					if err == nil {
 						excerpt := conversion.StripTagsFromHtml(values.Posts[values.CurrentPostIndex].Html)
@@ -628,7 +651,7 @@ func excerptFunc(helper *structure.Helper, values *structure.RequestData) []byte
 						}
 						return bytes.Join(words[:number], []byte(" "))
 					}
-				} else if key == "characters" {
+				case "characters":
 					number, err := strconv.Atoi(value)
 					if err == nil {
 						// Use runes for UTF-8 support
@@ -656,21 +679,27 @@ func dateFunc(helper *structure.Helper, values *structure.RequestData) []byte {
 	showPublicationDate := false
 	timeFormat := "MMM Do, YYYY" // Default time format
 	// If in scope of a post, change default to published date
-	if values.CurrentHelperContext == 1 { // post
+	switch values.CurrentHelperContext {
+	case 1: // post
 		showPublicationDate = true
 	}
 	// Get the date
 	if len(helper.Arguments) != 0 {
 		arguments := methods.ProcessHelperArguments(helper.Arguments)
-		for key, value := range arguments {
-			if key == "published_at" {
+		for _, key := range []string{"published_at", "timeago", "format"} {
+			value, exists := arguments[key]
+			if !exists {
+				continue
+			}
+			switch key {
+			case "published_at":
 				showPublicationDate = true
-			} else if key == "timeago" {
+			case "timeago":
 				if value == "true" {
 					// Compute time ago
 					return evaluateEscape(date.GenerateTimeAgo(values.Posts[values.CurrentPostIndex].Date), helper.Unescaped)
 				}
-			} else if key == "format" {
+			case "format":
 				timeFormat = value
 			}
 		}

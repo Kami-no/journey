@@ -49,7 +49,7 @@ func RetrievePostsByUser(user_id int64, limit int64, offset int64) ([]structure.
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	posts, err := extractPosts(rows)
 	if err != nil {
 		return nil, err
@@ -63,7 +63,7 @@ func RetrievePostsByTag(tag_id int64, limit int64, offset int64) ([]structure.Po
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	posts, err := extractPosts(rows)
 	if err != nil {
 		return nil, err
@@ -77,7 +77,7 @@ func RetrievePostsForIndex(limit int64, offset int64) ([]structure.Post, error) 
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	posts, err := extractPosts(rows)
 	if err != nil {
 		return nil, err
@@ -91,7 +91,7 @@ func RetrievePostsForApi(limit int64, offset int64) ([]structure.Post, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	posts, err := extractPosts(rows)
 	if err != nil {
 		return nil, err
@@ -255,7 +255,7 @@ func RetrieveTags(postId int64) ([]structure.Tag, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	for rows.Next() {
 		var tagId int64
 		err := rows.Scan(&tagId)
@@ -413,7 +413,7 @@ func RetrieveSitemap() ([]structure.SmURL, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	for rows.Next() {
 		var url structure.SmURL
 		var lastMod *time.Time

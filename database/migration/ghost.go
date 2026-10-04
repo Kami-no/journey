@@ -173,7 +173,9 @@ func convertPosts(readDB *sql.DB) error {
 		}
 		allRows = append(allRows, row)
 	}
-	rows.Close()
+	if err := rows.Close(); err != nil {
+		return err
+	}
 	// Write all new dates
 	for _, row := range allRows {
 		writeDB, err := readDB.Begin()
@@ -240,7 +242,9 @@ func convertUsers(readDB *sql.DB) error {
 		}
 		allRows = append(allRows, row)
 	}
-	rows.Close()
+	if err := rows.Close(); err != nil {
+		return err
+	}
 	// Write all new dates
 	for _, row := range allRows {
 		writeDB, err := readDB.Begin()
@@ -293,7 +297,9 @@ func convertDates(readDB *sql.DB, stmtRetrieve string, stmtUpdate string) error 
 		}
 		allRows = append(allRows, row)
 	}
-	rows.Close()
+	if err := rows.Close(); err != nil {
+		return err
+	}
 	// Write all new dates
 	for _, row := range allRows {
 		writeDB, err := readDB.Begin()

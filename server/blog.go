@@ -19,7 +19,7 @@ import (
 )
 
 func healthzHandler(w http.ResponseWriter, r *http.Request, _ map[string]string) {
-	fmt.Fprint(w, "Ok!\n")
+	_, _ = fmt.Fprint(w, "Ok!\n")
 }
 
 func indexHandler(w http.ResponseWriter, r *http.Request, params map[string]string) {
@@ -72,7 +72,8 @@ func authorHandler(w http.ResponseWriter, r *http.Request, params map[string]str
 	slug := params["slug"]
 	function := params["function"]
 	number := params["number"]
-	if function == "" {
+	switch function {
+	case "":
 		// Render author template (first page)
 		err := templates.ShowAuthorTemplate(w, r, slug, 1)
 		if err != nil {
@@ -89,8 +90,7 @@ func authorHandler(w http.ResponseWriter, r *http.Request, params map[string]str
 			log.Println("503:", r.URL)
 			return
 		}
-		return
-	} else if function == "rss" {
+	case "rss":
 		// Render author rss feed
 		err := templates.ShowAuthorRss(w, slug)
 		if err != nil {
@@ -107,28 +107,28 @@ func authorHandler(w http.ResponseWriter, r *http.Request, params map[string]str
 			log.Println("503:", r.URL)
 			return
 		}
-		return
-	}
-	page, err := strconv.Atoi(number)
-	if err != nil || page <= 1 {
-		http.Redirect(w, r, "/", http.StatusFound)
-		return
-	}
-	// Render author template
-	err = templates.ShowAuthorTemplate(w, r, slug, page)
-	if err != nil {
-		if err.Error() == "sql: no rows in result set" {
-			w.WriteHeader(http.StatusNotFound)
-			e404 := templates.ShowPostTemplate(w, r, "404")
-			if e404 != nil {
-				http.Error(w, "Nobody here but us chickens!", http.StatusNotFound)
-				log.Println("404:", r.URL)
-			}
+	default:
+		page, err := strconv.Atoi(number)
+		if err != nil || page <= 1 {
+			http.Redirect(w, r, "/", http.StatusFound)
 			return
 		}
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		log.Println("503:", r.URL)
-		return
+		// Render author template
+		err = templates.ShowAuthorTemplate(w, r, slug, page)
+		if err != nil {
+			if err.Error() == "sql: no rows in result set" {
+				w.WriteHeader(http.StatusNotFound)
+				e404 := templates.ShowPostTemplate(w, r, "404")
+				if e404 != nil {
+					http.Error(w, "Nobody here but us chickens!", http.StatusNotFound)
+					log.Println("404:", r.URL)
+				}
+				return
+			}
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			log.Println("503:", r.URL)
+			return
+		}
 	}
 }
 
@@ -137,7 +137,8 @@ func tagHandler(w http.ResponseWriter, r *http.Request, params map[string]string
 	slug := params["slug"]
 	function := params["function"]
 	number := params["number"]
-	if function == "" {
+	switch function {
+	case "":
 		// Render tag template (first page)
 		err := templates.ShowTagTemplate(w, r, slug, 1)
 		if err != nil {
@@ -154,8 +155,7 @@ func tagHandler(w http.ResponseWriter, r *http.Request, params map[string]string
 			log.Println("503:", r.URL)
 			return
 		}
-		return
-	} else if function == "rss" {
+	case "rss":
 		// Render tag rss feed
 		err := templates.ShowTagRss(w, slug)
 		if err != nil {
@@ -172,28 +172,28 @@ func tagHandler(w http.ResponseWriter, r *http.Request, params map[string]string
 			log.Println("503:", r.URL)
 			return
 		}
-		return
-	}
-	page, err := strconv.Atoi(number)
-	if err != nil || page <= 1 {
-		http.Redirect(w, r, "/", http.StatusFound)
-		return
-	}
-	// Render tag template
-	err = templates.ShowTagTemplate(w, r, slug, page)
-	if err != nil {
-		if err.Error() == "sql: no rows in result set" {
-			w.WriteHeader(http.StatusNotFound)
-			e404 := templates.ShowPostTemplate(w, r, "404")
-			if e404 != nil {
-				http.Error(w, "Nobody here but us chickens!", http.StatusNotFound)
-				log.Println("404:", r.URL)
-			}
+	default:
+		page, err := strconv.Atoi(number)
+		if err != nil || page <= 1 {
+			http.Redirect(w, r, "/", http.StatusFound)
 			return
 		}
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		log.Println("503:", r.URL)
-		return
+		// Render tag template
+		err = templates.ShowTagTemplate(w, r, slug, page)
+		if err != nil {
+			if err.Error() == "sql: no rows in result set" {
+				w.WriteHeader(http.StatusNotFound)
+				e404 := templates.ShowPostTemplate(w, r, "404")
+				if e404 != nil {
+					http.Error(w, "Nobody here but us chickens!", http.StatusNotFound)
+					log.Println("404:", r.URL)
+				}
+				return
+			}
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			log.Println("503:", r.URL)
+			return
+		}
 	}
 }
 
@@ -202,10 +202,11 @@ func postHandler(w http.ResponseWriter, r *http.Request, params map[string]strin
 	var err error
 
 	slug := params["slug"]
-	if slug == "" {
+	switch slug {
+	case "":
 		http.Redirect(w, r, "/", http.StatusFound)
 		return
-	} else if slug == "rss" {
+	case "rss":
 		// Render index rss feed
 		err := templates.ShowIndexRss(w)
 		if err != nil {
@@ -223,12 +224,9 @@ func postHandler(w http.ResponseWriter, r *http.Request, params map[string]strin
 			return
 		}
 		return
-	}
-
-	// Render post template
-	if slug == "404" {
+	case "404":
 		err = fmt.Errorf("sql: no rows in result set")
-	} else {
+	default:
 		err = templates.ShowPostTemplate(w, r, slug)
 	}
 	if err != nil {

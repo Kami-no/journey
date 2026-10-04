@@ -153,7 +153,9 @@ func Generate(certPath string, keyPath string, host string) error {
 	}
 	// TODO: error handling
 	_ = pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
-	certOut.Close()
+	if err := certOut.Close(); err != nil {
+		return err
+	}
 	log.Print("written cert.pem\n")
 
 	keyOut, err := os.OpenFile(keyPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
@@ -163,7 +165,9 @@ func Generate(certPath string, keyPath string, host string) error {
 	}
 	// TODO: error handling
 	_ = pem.Encode(keyOut, pemBlockForKey(priv))
-	keyOut.Close()
+	if err := keyOut.Close(); err != nil {
+		return err
+	}
 	log.Print("written key.pem\n")
 	return nil
 }
