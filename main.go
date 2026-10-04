@@ -11,8 +11,6 @@ import (
 	"time"
 
 	"github.com/dimfeld/httptreemux/v5"
-	"golang.org/x/net/http2"
-	"golang.org/x/net/http2/h2c"
 
 	"github.com/kabukky/journey/configuration"
 	"github.com/kabukky/journey/database"
@@ -39,7 +37,7 @@ func main() {
 		if err != nil {
 			log.Fatal("Error: Couldn't open log file: " + err.Error())
 		}
-		defer logFile.Close()
+		defer func() { _ = logFile.Close() }()
 		log.SetOutput(logFile)
 	}
 
@@ -148,17 +146,17 @@ func main() {
 		server.InitializeAdmin(httpRouter)
 		// Sitemap
 		server.InitializeSitemap(httpRouter)
-		// Enable HTTP2 over Cleartext
-		h2s := &http2.Server{}
 		// Configure the server
+		// In Go 1.22+ HTTP/2 over cleartext is enabled via Protocols
 		srv := &http.Server{
 			Addr: fmt.Sprintf("%v", httpPort),
 			// TLSConfig: m.TLSConfig(),
 			ReadTimeout:  5 * time.Second,
 			WriteTimeout: 10 * time.Second,
 			IdleTimeout:  120 * time.Second,
-			Handler:      h2c.NewHandler(httpRouter, h2s),
+			Handler:      httpRouter,
 		}
+		srv.Protocols.SetUnencryptedHTTP2(true)
 		// Start http server
 		go func() {
 			log.Println("Starting server without HTTPS support. Please enable HTTPS in " + filenames.ConfigFilename + " to improve security.")

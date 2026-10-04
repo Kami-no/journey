@@ -57,7 +57,7 @@ func anyTimeFormat(format string, times ...time.Time) string {
 		if !t.IsZero() {
 			// Always return GMT time by converting to UTC and then replacing UTC with GMT in the output string (RSS doesn't allow UTC)
 			timeFormatted := t.UTC().Format(format)
-			return strings.Replace(timeFormatted, "UTC", "GMT", -1)
+			return strings.ReplaceAll(timeFormatted, "UTC", "GMT")
 		}
 	}
 	return ""

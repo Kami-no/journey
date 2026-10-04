@@ -222,10 +222,10 @@ func compileTheme(themePath string) error {
 	}
 	// Check if index and post templates are compiled
 	if _, ok := compiledTemplates.m["index"]; !ok {
-		return errors.New("Couldn't compile template 'index'. Is index.hbs missing?")
+		return errors.New("couldn't compile template 'index'. Is index.hbs missing?")
 	}
 	if _, ok := compiledTemplates.m["post"]; !ok {
-		return errors.New("Couldn't compile template 'post'. Is post.hbs missing?")
+		return errors.New("couldn't compile template 'post'. Is post.hbs missing?")
 	}
 	// Check if pagination and navigation templates have been provided by the theme.
 	// If not, use the build in ones.

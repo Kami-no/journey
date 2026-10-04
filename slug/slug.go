@@ -50,11 +50,12 @@ func generateUniqueSlug(slug string, table string, suffix int) string {
 		slugToCheck = slug + "-" + strconv.Itoa(suffix)
 	}
 	var err error
-	if table == "tags" { // Not needed at the moment. Tags with the same name should have the same slug.
+	switch table {
+	case "tags":
 		_, err = database.RetrieveTagIdBySlug(slugToCheck)
-	} else if table == "posts" {
+	case "posts":
 		_, err = database.RetrievePostBySlug(slugToCheck)
-	} else if table == "users" {
+	case "users":
 		_, err = database.RetrieveUserBySlug(slugToCheck)
 	}
 	if err == nil {
