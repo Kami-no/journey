@@ -93,6 +93,9 @@ nohup.out
 # No hidden
 .*
 !.dockerignore
+!.editorconfig
+!.gitattributes
+!.github/
 !.gitignore
 !.gitmodules
-!.github/
+!.golangci.yml

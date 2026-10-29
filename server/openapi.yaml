@@ -1,0 +1,936 @@
+openapi: 3.1.0
+info:
+  title: Journey Blog Engine API
+  description: |
+    Journey is a Go-based blog engine with SQLite storage.
+    The public blog routes render HTML/XML templates directly.
+    All structured data is accessed through the Admin JSON API,
+    which requires cookie-based session authentication.
+  version: 1.0.0
+  contact:
+    name: Journey Blog Engine
+    url: https://github.com/kabukky/journey
+
+servers:
+  - url: http://127.0.0.1:8080
+    description: Default HTTP server
+
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: session
+      description: Cookie-based session authentication managed by gorilla/securecookie.
+
+  schemas:
+    NavigationItem:
+      type: object
+      properties:
+        label:
+          type: string
+        url:
+          type: string
+        slug:
+          type: string
+          readOnly: true
+
+    Post:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          readOnly: true
+        title:
+          type: string
+          maxLength: 150
+        slug:
+          type: string
+          maxLength: 150
+        markdown:
+          type: string
+        html:
+          type: string
+          readOnly: true
+        image:
+          type: string
+          description: Path relative to blog URL, e.g. /images/2026/10/img.jpg
+        isFeatured:
+          type: boolean
+        isPage:
+          type: boolean
+          description: When true the post is rendered as a standalone page.
+        isPublished:
+          type: boolean
+          description: When true the post is published; when false it is a draft.
+        date:
+          type: string
+          format: date-time
+        metaTitle:
+          type: string
+          maxLength: 150
+        metaDescription:
+          type: string
+          maxLength: 200
+        tags:
+          type: string
+          description: Comma-separated tag names, e.g. "tag1,tag2,tag3"
+        author:
+          $ref: '#/components/schemas/PostAuthor'
+
+    PostAuthor:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        slug:
+          type: string
+        email:
+          type: string
+
+    Tag:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        slug:
+          type: string
+
+    TagList:
+      type: object
+      properties:
+        tags:
+          type: array
+          items:
+            $ref: '#/components/schemas/Tag'
+
+    BlogSettings:
+      type: object
+      properties:
+        url:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        logo:
+          type: string
+          description: Path to blog logo image.
+        cover:
+          type: string
+          description: Path to blog cover image.
+        themes:
+          type: array
+          items:
+            type: string
+        activeTheme:
+          type: string
+        postsPerPage:
+          type: integer
+          minimum: 1
+        navigationItems:
+          type: array
+          items:
+            $ref: '#/components/schemas/NavigationItem'
+
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          readOnly: true
+        name:
+          type: string
+          maxLength: 150
+        slug:
+          type: string
+          maxLength: 150
+        email:
+          type: string
+          format: email
+        image:
+          type: string
+          description: Path to user profile image.
+        cover:
+          type: string
+          description: Path to user cover image.
+        bio:
+          type: string
+          maxLength: 200
+        website:
+          type: string
+          format: uri
+        location:
+          type: string
+        password:
+          type: string
+          description: New password for updates.
+        passwordRepeated:
+          type: string
+          description: Must match password when updating.
+          writeOnly: true
+        role:
+          type: integer
+          enum: [1, 2, 3, 4]
+          description: 1=Administrator, 2=Editor, 3=Author, 4=Owner.
+        status:
+          type: string
+          enum: [active]
+        language:
+          type: string
+          default: en_US
+
+    ImageFile:
+      type: object
+      properties:
+        filename:
+          type: string
+
+    LoginRequest:
+      type: object
+      required:
+        - name
+        - password
+      properties:
+        name:
+          type: string
+        password:
+          type: string
+          format: password
+
+    RegisterRequest:
+      type: object
+      required:
+        - name
+        - email
+        - password
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+
+    UserIdResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: ok
+
+tags:
+  - name: Public
+    description: Public-facing blog content (HTML/XML rendered pages).
+  - name: Auth
+    description: Authentication and session management.
+  - name: Posts
+    description: Create, read, update, and delete blog posts.
+  - name: Blog
+    description: Blog settings and configuration.
+  - name: Users
+    description: User profile management.
+  - name: Images
+    description: Image upload and management.
+  - name: Feeds
+    description: RSS and Atom feed endpoints.
+
+paths:
+  /healthz:
+    get:
+      tags:
+        - Public
+      summary: Health check
+      description: Returns a simple health status.
+      responses:
+        "200":
+          description: Service is healthy.
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: Ok!
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+        "503":
+          description: Service is unavailable.
+
+  /admin/login:
+    get:
+      tags:
+        - Auth
+      summary: Login page
+      description: Renders the login form.
+      responses:
+        "200":
+          description: Login page HTML.
+    post:
+      tags:
+        - Auth
+      summary: Authenticate and create session
+      description: |
+        Authenticates the user and sets a `session` cookie.
+        Accepts form-encoded credentials.
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        "200":
+          description: Session created, redirect to admin dashboard.
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+                description: Session cookie.
+        "401":
+          description: Invalid credentials.
+          content:
+            text/plain:
+              schema:
+                type: string
+        "500":
+          description: Internal server error.
+          content:
+            text/plain:
+              schema:
+                type: string
+
+  /admin/register:
+    get:
+      tags:
+        - Auth
+      summary: Registration page
+      description: Renders the registration form (only shown when no users exist).
+      responses:
+        "200":
+          description: Registration page HTML.
+        "403":
+          description: Users already exist.
+    post:
+      tags:
+        - Auth
+      summary: Register a new user
+      description: Creates the first user account.
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        "200":
+          description: User created, session started.
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+                description: Session cookie.
+        "403":
+          description: Users already exist.
+        "500":
+          description: Internal server error.
+          content:
+            text/plain:
+              schema:
+                type: string
+
+  /admin/logout:
+    get:
+      tags:
+        - Auth
+      summary: Logout
+      description: Clears the session cookie and redirects to the login page.
+      responses:
+        "302":
+          description: Redirected to login page.
+
+  /admin/api/posts/{page}:
+    get:
+      tags:
+        - Posts
+      summary: List posts
+      description: Returns a paginated list of posts.
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: page
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+          description: Page number (1-based, 15 posts per page).
+      responses:
+        "200":
+          description: List of posts.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Post'
+        "403":
+          description: Not logged in.
+          content:
+            text/plain:
+              schema:
+                type: string
+        "500":
+          description: Internal server error.
+          content:
+            text/plain:
+              schema:
+                type: string
+
+  /admin/api/post:
+    post:
+      tags:
+        - Posts
+      summary: Create a post
+      description: Creates a new blog post or page.
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Post'
+            example:
+              title: "My First Post"
+              markdown: "Hello **World**"
+              isPublished: true
+              tags: "hello,world"
+              isFeatured: false
+              isPage: false
+      responses:
+        "200":
+          description: Post created.
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: Post created!
+        "400":
+          description: Invalid request body.
+        "403":
+          description: Not logged in.
+        "500":
+          description: Internal server error.
+          content:
+            text/plain:
+              schema:
+                type: string
+    patch:
+      tags:
+        - Posts
+      summary: Update a post
+      description: Updates an existing post. The full post body is expected.
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Post'
+            example:
+              id: 1
+              title: "Updated Title"
+              markdown: "Updated content"
+              isPublished: true
+              tags: "updated"
+      responses:
+        "200":
+          description: Post updated.
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: Post updated!
+        "400":
+          description: Invalid request body or missing post ID.
+        "403":
+          description: Not logged in.
+        "500":
+          description: Internal server error.
+          content:
+            text/plain:
+              schema:
+                type: string
+
+  /admin/api/post/{id}:
+    get:
+      tags:
+        - Posts
+      summary: Get a single post
+      description: Retrieves a single post by its database ID.
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: Post database ID.
+      responses:
+        "200":
+          description: Post details.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Post'
+        "403":
+          description: Not logged in.
+          content:
+            text/plain:
+              schema:
+                type: string
+        "500":
+          description: Internal server error.
+          content:
+            text/plain:
+              schema:
+                type: string
+    delete:
+      tags:
+        - Posts
+      summary: Delete a post
+      description: Deletes a post by its database ID.
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: Post database ID.
+      responses:
+        "200":
+          description: Post deleted.
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: Post deleted!
+        "403":
+          description: Not logged in.
+        "500":
+          description: Internal server error.
+          content:
+            text/plain:
+              schema:
+                type: string
+
+  /admin/api/upload:
+    post:
+      tags:
+        - Images
+      summary: Upload images
+      description: Uploads one or more image files. Files are stored under `/images/{year}/{month}/`.
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                files:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+                  maxItems: 50
+                  description: Image files to upload.
+      responses:
+        "200":
+          description: Uploaded file paths.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+                example:
+                  - "/images/2026/10/abc123.jpg"
+                  - "/images/2026/10/def456.png"
+        "400":
+          description: Invalid file or no files provided.
+        "403":
+          description: Not logged in.
+        "500":
+          description: Internal server error.
+          content:
+            text/plain:
+              schema:
+                type: string
+
+  /admin/api/images/{page}:
+    get:
+      tags:
+        - Images
+      summary: List uploaded images
+      description: Returns a paginated list of uploaded image paths.
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: page
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+          description: Page number (1-based, 15 images per page).
+      responses:
+        "200":
+          description: List of image paths.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+                example:
+                  - "/images/2026/10/img1.jpg"
+                  - "/images/2026/09/img2.jpg"
+        "403":
+          description: Not logged in.
+          content:
+            text/plain:
+              schema:
+                type: string
+        "500":
+          description: Internal server error.
+          content:
+            text/plain:
+              schema:
+                type: string
+
+  /admin/api/image:
+    delete:
+      tags:
+        - Images
+      summary: Delete an image
+      description: Deletes an uploaded image by filename.
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ImageFile'
+            example:
+              filename: "some-filename.jpg"
+      responses:
+        "200":
+          description: Image deleted.
+        "400":
+          description: Missing or invalid filename.
+        "403":
+          description: Not logged in.
+        "500":
+          description: Internal server error.
+          content:
+            text/plain:
+              schema:
+                type: string
+
+  /admin/api/blog:
+    get:
+      tags:
+        - Blog
+      summary: Get blog settings
+      description: Returns the current blog configuration.
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: Blog settings.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BlogSettings'
+        "403":
+          description: Not logged in.
+          content:
+            text/plain:
+              schema:
+                type: string
+        "500":
+          description: Internal server error.
+          content:
+            text/plain:
+              schema:
+                type: string
+    patch:
+      tags:
+        - Blog
+      summary: Update blog settings
+      description: Updates the blog configuration. The full blog settings body is expected.
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BlogSettings'
+            example:
+              title: "My Blog"
+              description: "A simple blog"
+              postsPerPage: 10
+              activeTheme: "promenade"
+              navigationItems:
+                - label: Home
+                  url: "/"
+      responses:
+        "200":
+          description: Blog settings updated.
+        "400":
+          description: Invalid request body.
+        "403":
+          description: Not logged in.
+        "500":
+          description: Internal server error.
+          content:
+            text/plain:
+              schema:
+                type: string
+
+  /admin/api/user/{id}:
+    get:
+      tags:
+        - Users
+      summary: Get user profile
+      description: Retrieves a user profile by database ID.
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: User database ID.
+      responses:
+        "200":
+          description: User profile.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        "403":
+          description: Not logged in.
+          content:
+            text/plain:
+              schema:
+                type: string
+        "500":
+          description: Internal server error.
+          content:
+            text/plain:
+              schema:
+                type: string
+
+  /admin/api/user:
+    patch:
+      tags:
+        - Users
+      summary: Update user profile
+      description: Updates the authenticated user's profile.
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+            example:
+              name: "John Doe"
+              email: "john@example.com"
+              bio: "Developer and blogger"
+              website: "https://johndoe.com"
+              location: "New York"
+              password: "new-password"
+              passwordRepeated: "new-password"
+      responses:
+        "200":
+          description: User updated.
+        "400":
+          description: Invalid request body or password mismatch.
+        "403":
+          description: Not logged in.
+        "500":
+          description: Internal server error.
+          content:
+            text/plain:
+              schema:
+                type: string
+
+  /admin/api/userid:
+    get:
+      tags:
+        - Users
+      summary: Get current user ID
+      description: Returns the database ID of the currently authenticated user.
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: Current user ID.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserIdResponse'
+        "403":
+          description: Not logged in.
+          content:
+            text/plain:
+              schema:
+                type: string
+        "500":
+          description: Internal server error.
+          content:
+            text/plain:
+              schema:
+                type: string
+
+  /:slug/:function/rss:
+    get:
+      tags:
+        - Feeds
+      summary: Post RSS feed
+      description: Renders an RSS feed for a specific post or the blog.
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Post or blog slug.
+        - name: function
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [rss]
+          description: Feed function type.
+      responses:
+        "200":
+          description: RSS feed XML.
+          content:
+            application/rss+xml:
+              schema:
+                type: string
+        "404":
+          description: Post or blog not found.
+
+  /author/{slug}/rss:
+    get:
+      tags:
+        - Feeds
+      summary: Author RSS feed
+      description: Renders an RSS feed for an author's posts.
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Author slug.
+      responses:
+        "200":
+          description: Author RSS feed XML.
+          content:
+            application/rss+xml:
+              schema:
+                type: string
+        "404":
+          description: Author not found.
+
+  /tag/{slug}/rss:
+    get:
+      tags:
+        - Feeds
+      summary: Tag RSS feed
+      description: Renders an RSS feed for posts with a specific tag.
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Tag slug.
+      responses:
+        "200":
+          description: Tag RSS feed XML.
+          content:
+            application/rss+xml:
+              schema:
+                type: string
+        "404":
+          description: Tag not found.
+
+  /sitemap.xml:
+    get:
+      tags:
+        - Feeds
+      summary: XML sitemap
+      description: Generates and returns an XML sitemap of all public pages and posts.
+      responses:
+        "200":
+          description: XML sitemap.
+          content:
+            application/xml:
+              schema:
+                type: string
+
+  /metrics/:
+    get:
+      tags:
+        - Public
+      summary: Prometheus metrics
+      description: Returns application metrics in Prometheus format.
+      responses:
+        "200":
+          description: Prometheus metrics.
+          content:
+            text/plain:
+              schema:
+                type: string

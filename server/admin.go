@@ -1,6 +1,7 @@
 package server
 
 import (
+	"embed"
 	"encoding/json"
 	"io"
 	"log"
@@ -27,6 +28,9 @@ import (
 	"github.com/kabukky/journey/templates"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
+
+//go:embed openapi.yaml
+var openAPIFile embed.FS
 
 type JsonPost struct {
 	Id              int64
@@ -75,6 +79,16 @@ type JsonUserId struct {
 
 type JsonImage struct {
 	Filename string
+}
+
+func openApiHandler(w http.ResponseWriter, r *http.Request, _ map[string]string) {
+	data, err := openAPIFile.ReadFile("openapi.yaml")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "text/yaml")
+	_, _ = w.Write(data)
 }
 
 // Function to serve the login page
@@ -906,4 +920,6 @@ func InitializeAdmin(router *httptreemux.TreeMux) {
 	router.GET("/admin/api/userid", getApiUserIdHandler)
 	// Metrics
 	router.GET("/metrics/", getMetrics)
+	// OpenAPI specification
+	router.GET("/admin/spec", openApiHandler)
 }
